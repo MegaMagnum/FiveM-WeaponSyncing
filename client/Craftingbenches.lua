@@ -13,16 +13,23 @@ Citizen.CreateThread(function()
                     if entity == 0 then NearbyEntity = nil end
                     Citizen.Wait(0)
                     x,y,z = table.unpack(GetEntityCoords(entity))
-                    if not ESX.UI.Menu.IsOpen('default', GetCurrentResourceName(), "general-menu") then 
-                        DrawText3D(x,y,z + 1.58, "Wapen werkbank")
-                        DrawText3D(x,y,z + 1.5, "Druk op ~r~[E]~w~ om aan de slag te gaan")
-                        if IsControlJustReleased(0, 38) then
-                            TaskTurnPedToFaceEntity(PlayerPedId(), entity, 1000)
-                            TaskGoToEntity(PlayerPedId(), entity, 1000, 0.1, 1, 1, 1)
-                            Citizen.Wait(2000)
-                            FreezeEntityPosition(PlayerPedId(), true)
-                            InBench()
-                        end
+                    DrawText3D(x,y,z + 1.58, Lang['weaponworkbench1'])
+                    DrawText3D(x,y,z + 1.5, Lang['weaponworkbench2'])
+                    if IsControlJustReleased(0, 38) then
+                        TaskTurnPedToFaceEntity(PlayerPedId(), entity, 1000)
+                        TaskGoToEntity(PlayerPedId(), entity, 1000, 0.1, 1, 1, 1)
+                        Citizen.Wait(2000)
+                        FreezeEntityPosition(PlayerPedId(), true)
+                        InBench()
+
+                        Citizen.CreateThread(function()
+                            while ESX.UI.Menu.IsOpen('default', GetCurrentResourceName(), "general-menu") do
+                                Citizen.Wait(1)
+                                if not ESX.UI.Menu.IsOpen('default', GetCurrentResourceName(), "general-menu") then
+                                    FreezeEntityPosition(PlayerPedId(), false)
+                                end
+                            end
+                        end)
                     end
                 else
                     NearbyEntity = nil
@@ -37,12 +44,14 @@ Citizen.CreateThread(function()
 end)
 
 function InBench()
+    TriggerEvent('WS:ReloadLoadout')
+    Citizen.Wait(100)
     AllowedToOpen = false
     entity = GetClosestObjectOfType(GetEntityCoords(PlayerPedId()), 1.0, 865942478, false, false, false)
     local weaponsininv = GetWeaponsInInv()
     if #weaponsininv ~= 0 then
         ESX.UI.Menu.Open('default', GetCurrentResourceName(), "general-menu", {
-            title = "Wapen werkbank",
+            title = Lang['weaponworkbench1'],
             align = 'top-left',
             elements = weaponsininv
         }, 
@@ -54,6 +63,7 @@ function InBench()
     
         function()
             ESX.UI.Menu.CloseAll()
+            TriggerEvent('WS:ReloadLoadout')
             AllowedToOpen = true
             FreezeEntityPosition(PlayerPedId(), false)
         end)
@@ -78,7 +88,7 @@ function ComponentMenu(data)
                             AddAttach(name, inventory[i].name, inventory[i].label, data.current.comp, data.current.wpnname)
                         else
                             --TriggerEvent('gr_corefunctions:SendNotification', "bi bi-exclamation-triangle", "Je hebt het item hier niet voor!", true)
-                            ESX.ShowNotification("Je hebt het item hier niet voor!")
+                            ESX.ShowNotification(Lang['NoItem'])
                         end
                     else
                         RemoveAttach(name, inventory[i].name, inventory[i].label, data.current.comp, data.current.wpnname)
@@ -115,12 +125,11 @@ function AddAttach(wpnname, item, label, comp, wpnitem)
         }
     }, function(status)
 
-        TriggerServerEvent('WS:AddAttach', item, 1, wpnname, comp, wpnitem, wpntype)
+        TriggerServerEvent('WS:AddAttach', item, 1, wpnname, comp, wpnitem, Weapons)
         --TriggerEvent('gr_corefunctions:SendNotification', "bi bi-check-circle", "Je hebt een "..label.." op je wapen gezet", true)
-        ESX.ShowNotification("Je hebt een "..label.." op je wapen gezet")
         AllowedToOpen = true
         TriggerEvent('WS:ReloadLoadout')
-        Wait(150)
+        Wait(250)
         InBench()
     end)
 end
@@ -146,12 +155,11 @@ function RemoveAttach(wpnname, item, label, comp, wpnitem)
             task = nil
         }
     }, function(status)
-        TriggerServerEvent('WS:RemoveAttach', item, 1, wpnname, comp, wpnitem)
+        TriggerServerEvent('WS:RemoveAttach', item, 1, wpnname, comp, wpnitem, Weapons)
         --TriggerEvent('gr_corefunctions:SendNotification', "bi bi-check-circle", "Je hebt een "..label.." van je wapen afgehaald", true)
-        ESX.ShowNotification("Je hebt een "..label.." van je wapen afgehaald")
         AllowedToOpen = true
         TriggerEvent('WS:ReloadLoadout')
-        Wait(150)
+        Wait(250)
         InBench()
     end)
 end
